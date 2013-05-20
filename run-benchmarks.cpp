@@ -36,10 +36,10 @@ public:
     std::chrono::duration<double> Run(size_t nTests) const {
         using namespace std::chrono;
         vector<int> items = InternalItems;
-        steady_clock::time_point startTime = steady_clock::now();
+        high_resolution_clock::time_point startTime = high_resolution_clock::now();
         for (size_t i = 0; i < nTests; ++i) 
             apply_permutation(items, Permutation);
-        steady_clock::time_point finTime = steady_clock::now();
+        high_resolution_clock::time_point finTime = high_resolution_clock::now();
         return duration_cast<duration<double>> (finTime - startTime);
     }
 
@@ -57,10 +57,10 @@ public:
 
     virtual double RunBenchmark(size_t nRuns, size_t testsForRun) const {
         assert (nRuns > 0);
-        double res = Run(testsForRun).count();
-        for (--nRuns; nRuns != 0; --nRuns)
-            res = min(res, Run(testsForRun).count());
-        return res;
+        vector<double> times(nRuns);
+        for (size_t i = 0; i < nRuns; ++i)
+            times[i] = Run(testsForRun).count();
+        return *min_element(times.begin(), times.end());
     }
 };
 
@@ -73,11 +73,11 @@ public:
 
     virtual double RunBenchmark(size_t nRuns, size_t testsForRun) const {
         assert (nRuns > 0);
-        vector<double> times;
-        for (; nRuns != 0; --nRuns)
-            times.push_back(Run(testsForRun).count());
+        vector<double> times(nRuns);
+        for (size_t i = 0; i < nRuns; ++i)
+            times[i] = Run(testsForRun).count();
         sort(times.begin(), times.end());
-        return times[times.size()/2];
+        return times.size() % 2 ? times[times.size()/2] : (times[times.size()/2] + times[times.size()/2 - 1])/2;
     }
 };
 
@@ -90,10 +90,10 @@ public:
 
     virtual double RunBenchmark(size_t nRuns, size_t testsForRun) const {
         assert (nRuns > 0);
-        double smTime = 0.0;
-        for (size_t i = 0; i < nRuns; ++i) 
-            smTime += Run(testsForRun).count();
-        return smTime / nRuns;
+        vector<double> times(nRuns);
+        for (size_t i = 0; i < nRuns; ++i)
+            times[i] = Run(testsForRun).count();
+        return accumulate(times.begin(), times.end(), 0.0) / nRuns;
     }
 };
 
@@ -105,12 +105,12 @@ public:
     {}
 
     virtual double RunBenchmark(size_t nRuns, size_t testsForRun) const {
-        assert (nRuns > 2);
-        vector<double> times;
-        for (; nRuns != 0; --nRuns)
-            times.push_back(Run(testsForRun).count());
+        assert (nRuns > 4);
+        vector<double> times(nRuns);
+        for (size_t i = 0; i < nRuns; ++i)
+            times[i] = Run(testsForRun).count();
         sort(times.begin(), times.end());
-        return accumulate(times.begin() + 1, times.end() - 1, 0.0) / (times.size() - 2);
+        return accumulate(times.begin() + 2, times.end() - 2, 0.0) / (times.size() - 4);
     }
 };
 
@@ -149,9 +149,9 @@ void PrintBenchmarkStatistics(const string& benchname, const BaseBenchmark* benc
 
 
 int main() {
-    const size_t ITEMS = 1000;
-    const size_t WARMUP_TESTS = 1000000;
-    const size_t BENCH_TESTS = 10000;
+    const size_t ITEMS = 100;
+    const size_t WARMUP_TESTS = 10000000;
+    const size_t BENCH_TESTS = 100000;
 
     const size_t BENCH_RUNS = 100;
     const size_t VARIANCE_CALC_RUNS = 10;
